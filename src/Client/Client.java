@@ -39,24 +39,35 @@ public class Client {
         }
         return inputNum;
     }
-    private static boolean checkUsername(String username) throws IOException, ServerException {
+    private static boolean checkUsername(String username,int status) throws IOException, ServerException {//status =1, then it is loggin, otherwise, it is register
         boolean isValid = true;
         //这里需要server去check username是否可以用 是不是有重复的
-        if (!isValid) {
+        if (!isValid ) {
             // 用户名已存在，抛出自定义异常
-            throw new ServerException("There is a same username");
+            if(status==0)
+                throw new ServerException("There is a same username");
+            else throw new ServerException("There is not such a username");
+        }
+        return isValid;
+    }
+    private static boolean checkPassword(String username) throws IOException, ServerException {//status =1, then it is loggin, otherwise, it is register
+        boolean isValid = true;
+        //这里需要server去check 密码和hash是否相同
+        if (!isValid ) {
+            // 用户名已存在，抛出自定义异常
+            throw new ServerException("Your password is wrong");
         }
         return isValid;
     }
     public static void Register() {
         Scanner scanner = new Scanner(System.in);
-        String username,password;
+        String username,password,email;
         boolean validInput = false;
         while(!validInput) {
             System.out.println("Please Input your username");
             username=scanner.nextLine();
             try {
-                validInput=checkUsername(username);
+                validInput=checkUsername(username,0);
             }catch (IOException e){
                 System.out.println("Your socket is stopped");
                 System.exit(0);
@@ -84,9 +95,49 @@ public class Client {
             }
 
         }
-
+        //把密码上传给系统
+        email=scanner.nextLine();
+        //email上传给系统
     }
     public static void Login() {
+        Scanner scanner = new Scanner(System.in);
+        String username,password,email,input;
+        boolean validInput = false;
+        while(!validInput) {
+            System.out.println("Please Input your username");
+            username=scanner.nextLine();
+            try {
+                validInput=checkUsername(username,1);
+            }catch (IOException e){
+                System.out.println("Your socket is stopped");
+                System.exit(0);
+            }catch (ServerException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+        email="***@***.com";//这里要拿到加密后的email，并且解密
+        System.out.println("Is this your Email?,press 1 if it is yours\n"+email);
+        input=scanner.nextLine();
+        if(input!="1") {
+            System.out.println("Our socket was attacked, you are not connecting the right server");
+            System.exit(0);
+        }
+        validInput=false;
+        while(!validInput) {
+            System.out.println("Please Input your password");
+            password=scanner.nextLine();
+            try {
+                validInput=checkPassword(password);
+            }catch (IOException e){
+                System.out.println("Your socket is stopped");
+                System.exit(0);
+            }catch (ServerException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+
+
+
 
     }
 
