@@ -39,14 +39,54 @@ public class Client {
         }
         return inputNum;
     }
-    public static int Register() {
+    private static boolean checkUsername(String username) throws IOException, ServerException {
+        boolean isValid = true;
+        //这里需要server去check username是否可以用 是不是有重复的
+        if (!isValid) {
+            // 用户名已存在，抛出自定义异常
+            throw new ServerException("There is a same username");
+        }
+        return isValid;
+    }
+    public static void Register() {
         Scanner scanner = new Scanner(System.in);
-        boolean validInput =  false;
-        System.out.println("Please Input your username");
-        String input = scanner.nextLine();
-        try{
+        String username,password;
+        boolean validInput = false;
+        while(!validInput) {
+            System.out.println("Please Input your username");
+            username=scanner.nextLine();
+            try {
+                validInput=checkUsername(username);
+            }catch (IOException e){
+                System.out.println("Your socket is stopped");
+                System.exit(0);
+            }catch (ServerException e) {
+                System.out.println(e.getMessage());
+            }
+        }
+        validInput=false;
+        while(!validInput) {
+            System.out.println("Please Input your password, The password ought to contains Uppercase Character, Lowercase character and digits");
+            password=scanner.nextLine();
+            try {
+                if (!password.matches(".*[A-Z].*")) { // 包含大写字母
+                    throw new Exception("Your password must contains uppercase character");
+                }
+                if (!password.matches(".*[a-z].*")) { // 包含小写字母
+                    throw new Exception("Your password must contains lowercase character");
+                }
+                if (!password.matches(".*\\d.*")) { // 包含数字
+                    throw new Exception("Your password must contains digits");
+                }
+                validInput=true;
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+            }
 
         }
+
+    }
+    public static void Login() {
 
     }
 
