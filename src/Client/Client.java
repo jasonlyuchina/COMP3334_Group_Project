@@ -12,6 +12,7 @@ public class Client {
         if(option == 1)
             Register();
         else Login();
+        Chat();
     }
     public static int begin() {
         Scanner scanner = new Scanner(System.in);
@@ -139,6 +140,9 @@ public class Client {
 
 
 
+    }
+    public static void Chat() {
+        //两个人开始聊天，一个while
     }
 
 
