@@ -106,6 +106,7 @@ public class Client {
         //这里需要把密码上传给系统,用serverpublckey去加密
         email=scanner.nextLine();
         //email上传给系统，用 serverpublickey去加密
+        Chat(socket,myPrivateKey,myPublicKey,serverPublicKey);
     }
     public static void Login(Socket socket, String myPublicKey, String myPrivateKey, String serverPublicKey) {
         Scanner scanner = new Scanner(System.in);
@@ -143,6 +144,7 @@ public class Client {
                 System.out.println(e.getMessage());
             }
         }
+        Chat(socket,myPrivateKey,myPublicKey,serverPublicKey);
     }
     public static void Chat(Socket socket, String myPrivateKey,String myPublicKey, String serverPublicKey) {
         //获取整个用户列表，从socket，服务器传过来，可以不加（optional）
