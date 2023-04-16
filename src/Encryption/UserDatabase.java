@@ -42,10 +42,10 @@ public class UserDatabase{
     }
 
     public static void storeUser(String username, String password, String email) throws Exception {
-        String encryptedUsername = encrypt(username,password);
-        String encryptedEmail = encrypt(email);
+        String encryptedUsername = Encryptions.encrypt(username,password);
+        String encryptedEmail = Encryptions.encrypt(email);
         String hashSalt = generateRandomSalt();
-        String passwordHash = hash(password, hashSalt);
+        String passwordHash = Encryptions.hash(password, hashSalt);
 
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement stmt = conn.prepareStatement(
@@ -72,13 +72,13 @@ public class UserDatabase{
                 String hashSalt = resultSet.getString("salt");
                 String encryptedPublicKey = resultSet.getString("encrypted_public_key");
 
-                String decryptedPublicKeyB64 = decrypt(encryptedPublicKey, userPassword);
+                String decryptedPublicKeyB64 = Encryptions.decrypt(encryptedPublicKey, userPassword);
                 byte[] decodedPublicKeyBytes = Base64.getDecoder().decode(decryptedPublicKeyB64);
                 X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(decodedPublicKeyBytes);
                 KeyFactory keyFactory = KeyFactory.getInstance("RSA");
                 PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
 
-                String userPasswordHash = hash(userPassword, hashSalt);
+                String userPasswordHash = Encryptions.hash(userPassword, hashSalt);
 
                 return storedPasswordHash.equals(userPasswordHash);
             } else {
@@ -90,9 +90,23 @@ public class UserDatabase{
         }
     }
 
+    public static boolean userExists(String username) {
+        return false;
+    }
 
+    public static String getEmail(String username) {
+        return "";
+    }
 
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
 
+    /*
     public static String encrypt(String data, String password) throws Exception {
 
 
@@ -153,23 +167,24 @@ public class UserDatabase{
         return sb.toString();
     }
 
-    private static KeyPair generateRSAKeyPair() throws Exception {
+    public static KeyPair generateRSAKeyPair() throws Exception {
         KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
         keyPairGenerator.initialize(2048);
         return keyPairGenerator.generateKeyPair();
     }
 
-    private static String encryptRSA(String data, PublicKey publicKey) throws Exception {
+    public static String encryptRSA(String data, PublicKey publicKey) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
         return Base64.getEncoder().encodeToString(cipher.doFinal(data.getBytes(StandardCharsets.UTF_8)));
     }
 
-    private static String decryptRSA(String data, PrivateKey privateKey) throws Exception {
+    public static String decryptRSA(String data, PrivateKey privateKey) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.DECRYPT_MODE, privateKey);
         return new String(cipher.doFinal(Base64.getDecoder().decode(data)));
     }
+    */
 
 
     public static void main(String[] args) {
