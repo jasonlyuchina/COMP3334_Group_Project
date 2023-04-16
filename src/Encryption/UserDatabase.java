@@ -92,7 +92,9 @@ public class UserDatabase{
 
 
 
+
     public static String encrypt(String data, String password) throws Exception {
+
 
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         KeySpec spec = new PBEKeySpec(password.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
@@ -121,7 +123,9 @@ public class UserDatabase{
         return Base64.getEncoder().encodeToString(encrypted);
     }
 
+
     public static String decrypt(String encryptedData, String password) throws Exception {
+
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         KeySpec spec = new PBEKeySpec(password.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
         SecretKey tmp = factory.generateSecret(spec);
