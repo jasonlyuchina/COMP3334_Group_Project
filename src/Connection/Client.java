@@ -4,11 +4,29 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Random;
+
 
 public class Client {
     private static final String SERVER_IP = "localhost";
     private static final int SERVER_PORT = 5000;
-    private static final int CLIENT_PORT = 7000;
+    private static int CLIENT_PORT;
+    public static int getAvailablePort() {
+        int max = 65535;
+        int min = 2000;
+        Random random = new Random();
+        int port = random.nextInt(max) % (max - min + 1) + min;
+        boolean using = NetUtils.isLoclePortUsing(port);
+        if (using) {
+            return getAvailablePort();
+        } else {
+            return port;
+        }
+    }
+    Client(){
+        CLIENT_PORT = getAvailablePort();
+    }
+
 
     public static void main(String[] args) {
         try {
