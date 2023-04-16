@@ -28,7 +28,7 @@ public class UserDatabase{
                 PreparedStatement stmt = conn.prepareStatement(
                         "CREATE TABLE IF NOT EXISTS users " +
                                 "(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, password_hash TEXT, email TEXT, hash_salt TEXT)")) {
-                stmt.executeUpdate();
+            stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -92,7 +92,9 @@ public class UserDatabase{
 
 
 
-    private static String encrypt(String data, String password) throws Exception {
+
+    public static String encrypt(String data, String password) throws Exception {
+
 
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         KeySpec spec = new PBEKeySpec(password.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
@@ -121,7 +123,9 @@ public class UserDatabase{
         return Base64.getEncoder().encodeToString(encrypted);
     }
 
-    private static String decrypt(String encryptedData, String password) throws Exception {
+
+    public static String decrypt(String encryptedData, String password) throws Exception {
+
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         KeySpec spec = new PBEKeySpec(password.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
         SecretKey tmp = factory.generateSecret(spec);

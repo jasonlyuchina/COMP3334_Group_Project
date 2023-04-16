@@ -16,4 +16,8 @@ public class SQLiteJDBC {
         }
         System.out.println("Opened database successfully");
     }
+
+    public static void CloseConnection() {
+
+    }
 }
