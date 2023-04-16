@@ -1,3 +1,5 @@
+package Connection;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -5,31 +7,43 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
+import java.net.UnknownHostException;
 
 
 public class Client {
     private static final String SERVER_IP = "localhost";
     private static final int SERVER_PORT = 5000;
     private static int CLIENT_PORT;
-    public static int getAvailablePort() {
+    public static boolean isPortUsing(int port) throws UnknownHostException {
+        boolean flag = false;
+        try{
+            Socket socket = new Socket("127.0.0.1", port);
+            flag = true;
+        } catch (IOException e) {
+            //如果所测试端口号没有被占用，那么会抛出异常，这里利用这个机制来判断
+            //所以，这里在捕获异常后，什么也不用做
+        }
+        return flag;
+    }
+    public static int getAvailablePort() throws UnknownHostException {
         int max = 65535;
         int min = 2000;
         Random random = new Random();
         int port = random.nextInt(max) % (max - min + 1) + min;
-        boolean using = NetUtils.isLoclePortUsing(port);
+        boolean using = isPortUsing(port);
         if (using) {
             return getAvailablePort();
         } else {
             return port;
         }
     }
-    Client(){
+    Client() throws UnknownHostException {
         CLIENT_PORT = getAvailablePort();
     }
 
 
     public static void main(String[] args) {
-        try {
+        try{
             ServerSocket serverSocket = new ServerSocket(CLIENT_PORT);
             Socket socket = new Socket(SERVER_IP, SERVER_PORT);
             System.out.println("Connected to server: " + SERVER_IP + ":" + SERVER_PORT);
