@@ -9,6 +9,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.KeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.sql.*;
 import java.util.Base64;
 
@@ -41,7 +42,7 @@ public class UserDatabase{
     }
 
     public static void storeUser(String username, String password, String email) throws Exception {
-        String encryptedUsername = encrypt(username);
+        String encryptedUsername = encrypt(username,password);
         String encryptedEmail = encrypt(email);
         String hashSalt = generateRandomSalt();
         String passwordHash = hash(password, hashSalt);
@@ -57,25 +58,30 @@ public class UserDatabase{
         }
     }
 
-    private static boolean authenticateUser(String username, String inputPassword) {
+    public static boolean authenticateUser(String username, String userPassword) {
+        String query = "SELECT password, salt, encrypted_public_key FROM users WHERE username = ?";
+
         try (Connection conn = DriverManager.getConnection(DB_URL);
-             PreparedStatement stmt = conn.prepareStatement(
-                     "SELECT password_hash, hash_salt FROM users WHERE username = ?")) {
-            stmt.setString(1, encrypt(username));
-            ResultSet resultSet = stmt.executeQuery();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, username);
+            ResultSet resultSet = pstmt.executeQuery();
 
             if (resultSet.next()) {
-                String storedPasswordHash = resultSet.getString("password_hash");
-                String hashSalt = resultSet.getString("hash_salt");
-                String inputPasswordHash = hash(inputPassword, hashSalt);
-                if (storedPasswordHash.equals(inputPasswordHash)) {
-                    return true;
-                } else {
-                    System.out.println("Password is incorrect.");
-                    return false;
-                }
+                String storedPasswordHash = resultSet.getString("password");
+                String hashSalt = resultSet.getString("salt");
+                String encryptedPublicKey = resultSet.getString("encrypted_public_key");
+
+                String decryptedPublicKeyB64 = decrypt(encryptedPublicKey, userPassword);
+                byte[] decodedPublicKeyBytes = Base64.getDecoder().decode(decryptedPublicKeyB64);
+                X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(decodedPublicKeyBytes);
+                KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+
+                String userPasswordHash = hash(userPassword, hashSalt);
+
+                return storedPasswordHash.equals(userPasswordHash);
             } else {
-                System.out.println("Username not found.");
                 return false;
             }
         } catch (Exception e) {
@@ -85,32 +91,47 @@ public class UserDatabase{
     }
 
 
-    private static String encrypt(String data) throws Exception {
 
-        // Generate SecretKeyFactory instance based on PBKDF2 key derivation function.
+    private static String encrypt(String data, String password) throws Exception {
+
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        KeySpec spec = new PBEKeySpec(password.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
 
-        // Generate PBEKeySpec instance based on password and salt, transforming AES_SECRET_KEY into a byte array.
-        KeySpec spec = new PBEKeySpec(AES_SECRET_KEY.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
-
-        // Generate SecretKey instance based on PBEKeySpec instance.
         SecretKey tmp = factory.generateSecret(spec);
-
-        // Convert the SecretKey instance into a SecretKeySpec instance, which is suitable for AES encryption.
         SecretKey secret = new SecretKeySpec(tmp.getEncoded(), "AES");
         IvParameterSpec iv = new IvParameterSpec(AES_INIT_VECTOR.getBytes(StandardCharsets.UTF_8));
 
-        // Generate Cipher instance based on AES encryption.
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-
-        // Initialize the Cipher instance with the SecretKeySpec instance.
         cipher.init(Cipher.ENCRYPT_MODE, secret, iv);
-
-        // Encrypt the data.
         byte[] encrypted = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
-
-        // Return the encrypted data as a Base64 encoded string.
         return Base64.getEncoder().encodeToString(encrypted);
+    }
+
+    private static String encrypt(String data) throws Exception{ // for email
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        KeySpec spec = new PBEKeySpec(AES_SECRET_KEY.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
+
+        SecretKey tmp = factory.generateSecret(spec);
+        SecretKey secret = new SecretKeySpec(tmp.getEncoded(), "AES");
+        IvParameterSpec iv = new IvParameterSpec(AES_INIT_VECTOR.getBytes(StandardCharsets.UTF_8));
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, secret, iv);
+        byte[] encrypted = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(encrypted);
+    }
+
+    private static String decrypt(String encryptedData, String password) throws Exception {
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        KeySpec spec = new PBEKeySpec(password.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
+        SecretKey tmp = factory.generateSecret(spec);
+        SecretKey secret = new SecretKeySpec(tmp.getEncoded(), "AES");
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        IvParameterSpec iv = new IvParameterSpec(AES_INIT_VECTOR.getBytes(StandardCharsets.UTF_8));
+        cipher.init(Cipher.DECRYPT_MODE, secret, iv);
+        byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(encryptedData));
+        return new String(decrypted, StandardCharsets.UTF_8);
     }
 
     private static String hash(String data, String hashSalt) throws NoSuchAlgorithmException {
@@ -134,6 +155,19 @@ public class UserDatabase{
         return keyPairGenerator.generateKeyPair();
     }
 
+    private static String encryptRSA(String data, PublicKey publicKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+        return Base64.getEncoder().encodeToString(cipher.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private static String decryptRSA(String data, PrivateKey privateKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        return new String(cipher.doFinal(Base64.getDecoder().decode(data)));
+    }
+
+
     public static void main(String[] args) {
         createTable();
         try {
@@ -143,5 +177,19 @@ public class UserDatabase{
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+//        try{
+//            KeyPair pair = generateRSAKeyPair();
+//            PublicKey pk = pair.getPublic();
+//            PrivateKey sk = pair.getPrivate();
+//            String str = "Hello World";
+//            String encrypted = encryptRSA(str, pk);
+//            String decrypted = decryptRSA(encrypted, sk);
+//            System.out.println("Original: " + str);
+//            System.out.println("Encrypted: " + encrypted);
+//            System.out.println("Decrypted: " + decrypted);
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
     }
 }
