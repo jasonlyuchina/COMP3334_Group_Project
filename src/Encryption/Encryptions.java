@@ -36,7 +36,7 @@ public class Encryptions {
         return Base64.getEncoder().encodeToString(encrypted);
     }
 
-    public static String encrypt(String data) throws Exception{ // for email
+    public static String encrypt(String data) throws Exception{ // for username and email
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         KeySpec spec = new PBEKeySpec(AES_SECRET_KEY.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
 
@@ -50,6 +50,20 @@ public class Encryptions {
         return Base64.getEncoder().encodeToString(encrypted);
     }
 
+    /*
+    public static String decrypt(String encryptedData) throws Exception {
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+        KeySpec spec = new PBEKeySpec(AES_SECRET_KEY.toCharArray(), PASSWORD_SALT.getBytes(), ITERATIONS, KEY_LENGTH);
+        SecretKey tmp = factory.generateSecret(spec);
+        SecretKey secret = new SecretKeySpec(tmp.getEncoded(), "AES");
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        IvParameterSpec iv = new IvParameterSpec(AES_INIT_VECTOR.getBytes(StandardCharsets.UTF_8));
+        cipher.init(Cipher.DECRYPT_MODE, secret, iv);
+        byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(encryptedData));
+        return new String(decrypted, StandardCharsets.UTF_8);
+    }
+    */
 
     public static String decrypt(String encryptedData, String password) throws Exception {
 

@@ -341,7 +341,8 @@ public class Client {
 
     public static void main(String[] args) {
         int option = begin();
-        int port = Integer.parseInt(args[1]);
+        //int port = Integer.parseInt(args[0]);
+        int port = 1234;
         Client client = new Client("127.0.0.1", port);
         client.start(option);
     }

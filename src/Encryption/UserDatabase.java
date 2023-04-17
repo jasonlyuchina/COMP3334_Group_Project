@@ -23,6 +23,7 @@ public class UserDatabase{
     private static final int KEY_LENGTH = 256;
 
     public static void createTable(){
+        // username password_hash email hash_salt
         try(
                 Connection conn = DriverManager.getConnection(DB_URL);
                 PreparedStatement stmt = conn.prepareStatement(
@@ -42,7 +43,7 @@ public class UserDatabase{
     }
 
     public static void storeUser(String username, String password, String email) throws Exception {
-        String encryptedUsername = Encryptions.encrypt(username,password);
+        String encryptedUsername = Encryptions.encrypt(username);
         String encryptedEmail = Encryptions.encrypt(email);
         String hashSalt = generateRandomSalt();
         String passwordHash = Encryptions.hash(password, hashSalt);
@@ -56,27 +57,34 @@ public class UserDatabase{
             stmt.setString(4, encryptedEmail);
             stmt.executeUpdate();
         }
+        System.out.println("User: "+username);
+        System.out.println("Password: " +password);
+        System.out.println("Email: "+email);
+        System.out.println("Encrypted username: "+encryptedUsername);
+        System.out.println("Encrypted email: "+encryptedEmail);
+        System.out.println("Hash salt: "+hashSalt);
+        System.out.println("Hashed password: "+passwordHash);
     }
 
     public static boolean authenticateUser(String username, String userPassword) {
-        String query = "SELECT password, salt, encrypted_public_key FROM users WHERE username = ?";
+        // username password_hash email hash_salt
+        String query = "SELECT password_hash, hash_salt FROM users WHERE username = ?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement pstmt = conn.prepareStatement(query)) {
 
-            pstmt.setString(1, username);
+            pstmt.setString(1, Encryptions.encrypt(username));
             ResultSet resultSet = pstmt.executeQuery();
 
             if (resultSet.next()) {
-                String storedPasswordHash = resultSet.getString("password");
-                String hashSalt = resultSet.getString("salt");
-                String encryptedPublicKey = resultSet.getString("encrypted_public_key");
+                String storedPasswordHash = resultSet.getString("password_hash");
+                String hashSalt = resultSet.getString("hash_salt");
 
-                String decryptedPublicKeyB64 = Encryptions.decrypt(encryptedPublicKey, userPassword);
-                byte[] decodedPublicKeyBytes = Base64.getDecoder().decode(decryptedPublicKeyB64);
-                X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(decodedPublicKeyBytes);
-                KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-                PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+                //String decryptedPublicKeyB64 = Encryptions.decrypt(encryptedPublicKey, userPassword);
+                //byte[] decodedPublicKeyBytes = Base64.getDecoder().decode(decryptedPublicKeyB64);
+                //X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(decodedPublicKeyBytes);
+                //KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+                //PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
 
                 String userPasswordHash = Encryptions.hash(userPassword, hashSalt);
 
@@ -188,10 +196,14 @@ public class UserDatabase{
 
 
     public static void main(String[] args) {
+        SQLiteJDBC.CreateConnection();
         createTable();
+
         try {
             storeUser("username2", "password", "email@example.com");
             boolean isAuthenticated = authenticateUser("username", "wrong_pw");
+            System.out.println("User authentication result: " + isAuthenticated);
+            isAuthenticated = authenticateUser("username2", "password");
             System.out.println("User authentication result: " + isAuthenticated);
         } catch (Exception e) {
             e.printStackTrace();
