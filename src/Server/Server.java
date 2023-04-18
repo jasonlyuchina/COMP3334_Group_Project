@@ -96,8 +96,6 @@ public class Server {
         thread.start();
     }
 
-
-
     public void removeClient(ClientHandler client) {
         clientHandlers.remove(client);
         loggedClients.remove(client);

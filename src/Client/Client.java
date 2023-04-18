@@ -23,6 +23,7 @@ public class Client {
     private KeyPair RSAKeyPair;
     private PublicKey serverPublicKey;
     private byte[] sharedSecret;
+    Scanner scanner;
 
 
     public Client(String host, int port) {
@@ -51,83 +52,115 @@ public class Client {
 
 
         if (option == 1) {
+            writer.println("register");
             register();
         } else {
+            writer.println("login");
             login();
         }
 
         // After authentication
+        scanner = new Scanner(System.in);
+        String input = null;
         try {
-            Scanner scanner = new Scanner(System.in);
-            String input = reader.readLine();
-            boolean isValid = false;
+            input = reader.readLine();
             if (input.equals("Exist")) {
-                System.out.println("Input the room number you want to join (-1 to exit): ");
-                while (!isValid) {
-                    input = scanner.nextLine();
-                    try {
-                        int inputNum = Integer.parseInt(input);
-                        isValid = true;
-                        writer.println(inputNum);
-                        if (inputNum == -1) {
-                            System.out.println("Do you want to create a new waiting room? (Y/N)");
-                            isValid = false;
-                            while (!isValid) {
-                                input = scanner.nextLine();
-                                if (input.equals("Y")) {
-                                    writer.println(input);
-                                    isValid = true;
-                                } else if (input.equals("N")) {
-                                    writer.println(input);
-                                    isValid = true;
-                                    // To be determined
-                                } else {
-                                    System.out.println("Wrong input! Input Again!");
-                                }
+                writer.println("Received");
+                joinChatRoom();
+            } else if (input.equals("New")) {
+                System.out.println("No available waiting rooms");
+                createWaitingRoom();
+            } else {
+                System.err.println("Receive exceptional message: "+input);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Wait for successful creation of chat room
+        while (true) {
+            try {
+                input = reader.readLine();
+                if (input == null) {
+                    break;
+                }
+                System.out.println("Received message from server: "+input);
+                System.out.println("Chat room created successfully");
+                System.out.println("Room id "+input);
+                chat();
+            } catch (IOException e) {
+                System.err.println("Chat room creation error");
+                System.exit(1);
+            }
+        }
+    }
+
+    private void joinChatRoom() {
+        try {
+            // Receive available waiting rooms from server
+            String input = reader.readLine();
+            // Display available waiting rooms
+            System.out.println(input);
+
+            // Prompt for user to select join chat room or create new waiting room
+            System.out.println("Input the room number you want to join (-1 to exit): ");
+
+
+            // Temporarily assume input is valid
+            boolean isValid = false;
+            while (!isValid) {
+                input = scanner.nextLine();
+                try {
+                    int inputNum = Integer.parseInt(input);
+                    writer.println(inputNum);
+                    if (inputNum == -1) {
+                        createWaitingRoom();
+                        /*
+                        System.out.println("Do you want to create a new waiting room? (Y/N)");
+                        isValid = false;
+                        while (!isValid) {
+                            input = scanner.nextLine();
+                            if (input.equals("Y")) {
+                                writer.println(input);
+                                isValid = true;
+                            } else if (input.equals("N")) {
+                                writer.println(input);
+                                isValid = true;
+                                // To be determined
+                            } else {
+                                System.out.println("Wrong input! Input Again!");
                             }
                         }
-                    } catch (NumberFormatException e) {
-                        System.out.println("Wrong input! Input Again!");
+                        */
                     }
-
-                    isValid = true;
+                } catch (NumberFormatException e) {
+                    System.out.println("Wrong input! Input Again!");
                 }
-
-            } else if (input.equals("New")) {
-                System.out.println("Do you want to create a new waiting room? (Y/N)");
-                while (!isValid) {
-                    input = scanner.nextLine();
-                    if (input.equals("Y")) {
-                        writer.println(input);
-                        isValid = true;
-                    } else if (input.equals("N")) {
-                        writer.println(input);
-                        isValid = true;
-                        // To be determined
-                    } else {
-                        System.out.println("Wrong input! Input Again!");
-                    }
-                }
+                isValid = true;
             }
-            // Wait for successful creation of chat room
-
-            while (true) {
-                try {
-                    input = reader.readLine();
-                    if (input == null) {
-                        break;
-                    }
-                    System.out.println("Chat room created successfully");
-                    System.out.println("Room id "+input);
-                    chat();
-                } catch (IOException e) {
-                    System.err.println("Chat room creation error");
-                    System.exit(1);
-                }
-            }
-
+            // Successfully join chat room
         } catch (IOException e) {
             System.err.println("Socket communication error");
+        }
+    }
+
+    private void createWaitingRoom() {
+        System.out.println("Do you want to create a new waiting room? (Y/N)");
+        boolean isValid = false;
+        String input;
+        while (!isValid) {
+            input = scanner.nextLine();
+            if (input.equals("Y")) {
+                writer.println(input);
+                isValid = true;
+                System.out.println("Waiting for other users");
+            } else if (input.equals("N")) {
+                writer.println(input);
+                isValid = true;
+                // To be determined
+            } else {
+                System.out.println("Wrong input! Input Again!");
+            }
         }
     }
 
@@ -219,7 +252,9 @@ public class Client {
     private void register() {
         Scanner scanner = new Scanner(System.in);
         String username, password, email;
-        username = password = email = null;
+        username = null;
+        password = null;
+        email = null;
         boolean usernameExist = true;
 
         // Read username and pass to server for verification

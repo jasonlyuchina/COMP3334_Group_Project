@@ -57,13 +57,6 @@ public class UserDatabase{
             stmt.setString(4, encryptedEmail);
             stmt.executeUpdate();
         }
-        System.out.println("User: "+username);
-        System.out.println("Password: " +password);
-        System.out.println("Email: "+email);
-        System.out.println("Encrypted username: "+encryptedUsername);
-        System.out.println("Encrypted email: "+encryptedEmail);
-        System.out.println("Hash salt: "+hashSalt);
-        System.out.println("Hashed password: "+passwordHash);
     }
 
     public static boolean authenticateUser(String username, String userPassword) {
@@ -236,19 +229,5 @@ public class UserDatabase{
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-//        try{
-//            KeyPair pair = generateRSAKeyPair();
-//            PublicKey pk = pair.getPublic();
-//            PrivateKey sk = pair.getPrivate();
-//            String str = "Hello World";
-//            String encrypted = encryptRSA(str, pk);
-//            String decrypted = decryptRSA(encrypted, sk);
-//            System.out.println("Original: " + str);
-//            System.out.println("Encrypted: " + encrypted);
-//            System.out.println("Decrypted: " + decrypted);
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
     }
 }

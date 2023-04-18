@@ -196,6 +196,7 @@ public class ClientHandler implements Runnable {
         // Store user info
         try {
             UserDatabase.storeUser(username, password, email);
+            System.out.println("User info stored successfully");
         } catch (Exception e) {
             System.err.println("User information storage error");
         }
@@ -258,7 +259,7 @@ public class ClientHandler implements Runnable {
                 } else if (input.equals("register")) {
                     register();
                 } else {
-                    writer.println("Wrong Input");
+                    System.err.println("Wrong Input");
                 }
             }
         } catch (IOException e) {
@@ -272,8 +273,15 @@ public class ClientHandler implements Runnable {
         // Display available waiting rooms
         if (server.getAvailableWaitingRooms() > 0) {
             writer.println("Exist");
+            try {
+                reader.readLine();
+            } catch (IOException e) {
+                System.err.println("Did not receive response from client");
+            }
             String message = server.displayWaitingRooms();
             writer.println(message);
+
+            // Wait for response from client
             try {
                 String input = reader.readLine();
                 int roomNumber = Integer.parseInt(input);
@@ -283,15 +291,19 @@ public class ClientHandler implements Runnable {
             } catch (IOException e) {
                 System.err.println("Socket communication error");
             }
+        } else {
+            writer.println("New");
         }
-        writer.println("New");
+
         try {
+            // Wait for response from client
             String input = reader.readLine();
             if (input.equals("Y")) {
                 int roomNumber = server.addWaitingRoom(this);
-                writer.println(roomNumber);
-            } else {
+            } else if (input.equals("N")){
                 // To be determined
+            } else {
+                System.err.println("Receive exceptional message: "+input);
             }
         } catch (IOException e) {
             System.err.println("Socket communication error");
