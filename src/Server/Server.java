@@ -85,15 +85,6 @@ public class Server {
             stringBuilder.append(String.format("Room id: %d, user: %s\n", key, waitingRooms.get(key).getUser()));
         }
         stringBuilder.append("Input the room number you want to join (-1 to exit): ");
-        /*
-        if (waitingRooms.size() == 0) {
-            stringBuilder.append("No available waiting rooms\n");
-            stringBuilder.append("Do you want to create a new waiting room? (Y/N)\n");
-        } else {
-            stringBuilder.append(String.format("%d waiting room(s) available\n", waitingRooms.size()));
-            stringBuilder.append("Do you want to ");
-        }
-        */
         return stringBuilder.toString();
     }
 

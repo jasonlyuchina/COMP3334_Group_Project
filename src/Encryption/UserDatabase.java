@@ -99,11 +99,39 @@ public class UserDatabase{
     }
 
     public static boolean userExists(String username) {
-        return false;
+        String query = "SELECT email FROM users WHERE username = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, Encryptions.encrypt(username));
+            ResultSet resultSet = pstmt.executeQuery();
+
+            return resultSet.next();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public static String getEmail(String username) {
-        return "";
+        String query = "SELECT email FROM users WHERE username = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+
+            pstmt.setString(1, Encryptions.encrypt(username));
+            ResultSet resultSet = pstmt.executeQuery();
+
+            if (resultSet.next()) {
+                String encrypted_email = resultSet.getString("email");
+                return Encryptions.decrypt(encrypted_email);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return null;
     }
 
     private static String bytesToHex(byte[] bytes) {

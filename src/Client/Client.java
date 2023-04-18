@@ -1,9 +1,14 @@
 package Client;
 
 import Encryption.Encryptions;
+
+import javax.crypto.KeyAgreement;
 import java.io.*;
-import java.security.KeyPair;
-import java.security.PublicKey;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Scanner;
 import java.net.*;
 
@@ -17,10 +22,14 @@ public class Client {
 
     private KeyPair RSAKeyPair;
     private PublicKey serverPublicKey;
+    private byte[] sharedSecret;
+
 
     public Client(String host, int port) {
         this.host = host;
         this.port = port;
+        // Generate Public Key and Private Key of client side
+        generateKeyPair();
     }
 
     public void start(int option) {
@@ -31,14 +40,15 @@ public class Client {
             e.printStackTrace();
         }
         System.out.println("Client started on port " + port);
-        // Generate Public Key and Private Key of client side
-        generateKeyPair();
+        // Establish connection between server and client
+        establishConnection();
+        // Agree on a secret key using DH key exchange
+        DHKeyExchange();
         // Send Public Key to Server
         sendPublicKey();
         // Receive Public Key from Server
         receivePublicKey();
-        // Establish connection between server and client
-        establishConnection();
+
 
         if (option == 1) {
             register();
@@ -121,6 +131,16 @@ public class Client {
         }
     }
 
+    private void establishConnection() {
+        try {
+            this.reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            this.writer = new PrintWriter(clientSocket.getOutputStream(), true);
+
+        } catch (IOException e) {
+            System.err.println("Server connection error");
+        }
+    }
+
     private void generateKeyPair() {
         try {
             RSAKeyPair = Encryptions.generateRSAKeyPair();
@@ -129,38 +149,70 @@ public class Client {
         }
     }
 
-    private void sendPublicKey() {
+    // Agree on a secret key and send public key encrypted by the secret key
+    private void DHKeyExchange() {
+        KeyPairGenerator keyPairGenerator = null;
         try {
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(clientSocket.getOutputStream());
-            objectOutputStream.writeObject(RSAKeyPair.getPublic());
-            objectOutputStream.flush();
-            objectOutputStream.close();
-        } catch (IOException e) {
+            keyPairGenerator = KeyPairGenerator.getInstance("DiffieHellman");
+        } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
+        keyPairGenerator.initialize(1024);
+        KeyPair clientKeyPair = keyPairGenerator.generateKeyPair();
+        byte[] clientPublicKey = clientKeyPair.getPublic().getEncoded();
+        String publicKeyString = Base64.getEncoder().encodeToString(clientPublicKey);
+
+        // Send the public key to the server
+        writer.println(publicKeyString);
+
+        // Receive the public key from the server
+        try {
+            String keyString = reader.readLine();
+            byte[] keyBytes = Base64.getDecoder().decode(keyString);
+            // Convert the byte array to a public key object
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("DiffieHellman");
+            PublicKey publicKey = keyFactory.generatePublic(keySpec);
+
+            // Generate the shared secret key
+            KeyAgreement keyAgreement = KeyAgreement.getInstance("DiffieHellman");
+            keyAgreement.init(clientKeyPair.getPrivate());
+            keyAgreement.doPhase(publicKey, true);
+            sharedSecret = keyAgreement.generateSecret();
+
+        } catch (IOException e) {
+            System.err.println("Socket communication error");
+        } catch (InvalidKeyException | InvalidKeySpecException | NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    private void sendPublicKey() {
+        byte[] RSAPublicKey = RSAKeyPair.getPublic().getEncoded();
+        String publicKeyString = Base64.getEncoder().encodeToString(RSAPublicKey);
+        String encryptedRSAPublic = null;
+        try {
+            encryptedRSAPublic = Encryptions.encrypt(publicKeyString, sharedSecret);
+        } catch (Exception e) {
+            System.err.println("Public Key encryption error");
+        }
+        writer.println(encryptedRSAPublic);
     }
 
     private void receivePublicKey() {
         try {
-            ObjectInputStream objectInputStream = new ObjectInputStream(clientSocket.getInputStream());
-            try {
-                serverPublicKey = (PublicKey)objectInputStream.readObject();
-                objectInputStream.close();
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            }
+            String encryptedRSAPublic = reader.readLine();
+            String publicKeyString = Encryptions.decrypt(encryptedRSAPublic, sharedSecret);
+            byte[] keyBytes = Base64.getDecoder().decode(publicKeyString);
+            // Convert the decrypted byte[] to a PublicKey object
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            serverPublicKey = keyFactory.generatePublic(keySpec);
         } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void establishConnection() {
-        try {
-            this.reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            this.writer = new PrintWriter(clientSocket.getOutputStream(), true);
-
-        } catch (IOException e) {
-            System.err.println("Server connection error");
+            System.err.println("Socket communication error");
+        } catch (Exception e) {
+            System.err.println("Public Key Decryption error");
         }
     }
 
@@ -172,7 +224,7 @@ public class Client {
 
         // Read username and pass to server for verification
         while (usernameExist) {
-            System.out.println("Please Input your username");
+            System.out.print("Please Input your username: ");
             username = scanner.nextLine();
             try {
                 usernameExist = userExist(username);
@@ -206,9 +258,11 @@ public class Client {
         // Encrypt password and send to server
         sendEncrypted(password);
         // Read, encrypt email and send to server
+        System.out.print("Please Input your email: ");
         email=scanner.nextLine();
         sendEncrypted(email);
 
+        System.out.println("Successful register!");
         //chat();
     }
 
@@ -252,6 +306,7 @@ public class Client {
             }
         }
 
+        System.out.println("Successful login!");
         //chat();
     }
 

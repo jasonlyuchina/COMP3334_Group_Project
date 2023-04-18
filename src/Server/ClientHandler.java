@@ -4,10 +4,14 @@ package Server;
 import Encryption.Encryptions;
 import Encryption.UserDatabase;
 
+import javax.crypto.KeyAgreement;
 import java.io.*;
 import java.net.Socket;
-import java.security.KeyPair;
-import java.security.PublicKey;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
+import java.util.Base64;
 
 public class ClientHandler implements Runnable {
     private final Socket clientSocket;
@@ -21,6 +25,7 @@ public class ClientHandler implements Runnable {
     private PublicKey clientPublicKey;
 
     private String user;
+    private byte[] sharedSecret;
 
     public ClientHandler(Socket clientSocket, Server server) {
         // Initialization
@@ -31,6 +36,16 @@ public class ClientHandler implements Runnable {
         generateKeyPair();
     }
 
+    private void establishConnection() {
+        try {
+            this.reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            this.writer = new PrintWriter(clientSocket.getOutputStream(), true);
+
+        } catch (IOException e) {
+            System.err.println("Client connection failed");
+        }
+    }
+
     private void generateKeyPair() {
         try {
             RSAKeyPair = Encryptions.generateRSAKeyPair();
@@ -39,41 +54,68 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    // !!! Need modification !!! // Same for client
-    // Should not send key directly
-    // Instead, we should apply Diffie-Hellman Exchange
-    private void receivePublicKey() {
+    // Agree on a secret key and send public key encrypted by the secret key
+    private void DHKeyExchange() {
+        KeyPairGenerator keyPairGenerator = null;
         try {
-            ObjectInputStream objectInputStream = new ObjectInputStream(clientSocket.getInputStream());
-            try {
-                clientPublicKey = (PublicKey)objectInputStream.readObject();
-                objectInputStream.close();
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+            keyPairGenerator = KeyPairGenerator.getInstance("DiffieHellman");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
         }
-    }
+        keyPairGenerator.initialize(1024);
+        KeyPair serverKeyPair = keyPairGenerator.generateKeyPair();
+        byte[] serverPublicKey = serverKeyPair.getPublic().getEncoded();
+        String publicKeyString = Base64.getEncoder().encodeToString(serverPublicKey);
 
-    private void sendPublicKey() {
+        // Send the public key to the client
+        writer.println(publicKeyString);
+
+        // Receive the public key from the client
         try {
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(clientSocket.getOutputStream());
-            objectOutputStream.writeObject(RSAKeyPair.getPublic());
-            objectOutputStream.flush();
-            objectOutputStream.close();
+            String keyString = reader.readLine();
+            byte[] keyBytes = Base64.getDecoder().decode(keyString);
+            // Convert the byte array to a public key object
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("DiffieHellman");
+            PublicKey publicKey = keyFactory.generatePublic(keySpec);
+
+            // Generate the shared secret key
+            KeyAgreement keyAgreement = KeyAgreement.getInstance("DiffieHellman");
+            keyAgreement.init(serverKeyPair.getPrivate());
+            keyAgreement.doPhase(publicKey, true);
+            sharedSecret = keyAgreement.generateSecret();
         } catch (IOException e) {
+            System.err.println("Socket communication error");
+        } catch (InvalidKeyException | InvalidKeySpecException | NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void establishConnection() {
+    private void sendPublicKey() {
+        byte[] RSAPublicKey = RSAKeyPair.getPublic().getEncoded();
+        String publicKeyString = Base64.getEncoder().encodeToString(RSAPublicKey);
+        String encryptedRSAPublic = null;
         try {
-            this.reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            this.writer = new PrintWriter(clientSocket.getOutputStream(), true);
+            encryptedRSAPublic = Encryptions.encrypt(publicKeyString, sharedSecret);
+        } catch (Exception e) {
+            System.err.println("Public Key encryption error");
+        }
+        writer.println(encryptedRSAPublic);
+    }
 
+    private void receivePublicKey() {
+        try {
+            String encryptedRSAPublic = reader.readLine();
+            String publicKeyString = Encryptions.decrypt(encryptedRSAPublic, sharedSecret);
+            byte[] keyBytes = Base64.getDecoder().decode(publicKeyString);
+            // Convert the decrypted byte[] to a PublicKey object
+            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            clientPublicKey = keyFactory.generatePublic(keySpec);
         } catch (IOException e) {
-            System.err.println("Client connection failed");
+            System.err.println("Socket communication error");
+        } catch (Exception e) {
+            System.err.println("Public Key Decryption error");
         }
     }
 
@@ -162,7 +204,6 @@ public class ClientHandler implements Runnable {
         user = username;
     }
 
-    // !!! Need modification !!! //
     public String readEncrypted() {
         String decrypted = null;
 
@@ -195,12 +236,14 @@ public class ClientHandler implements Runnable {
 
     @Override
     public void run() {
-        // Receive Public Key from client
-        receivePublicKey();
-        // Send Public Key to client
-        sendPublicKey();
         // Establish connection between server and client
         establishConnection();
+        // Agree on a secret key using DH key exchange
+        DHKeyExchange();
+        // Send Public Key to client
+        sendPublicKey();
+        // Receive Public Key from client
+        receivePublicKey();
 
         // Client-Server connection
         // User register/login & Authentication
