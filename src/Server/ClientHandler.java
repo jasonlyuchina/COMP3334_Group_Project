@@ -121,44 +121,49 @@ public class ClientHandler implements Runnable {
 
     private void login() {
         boolean usernameExist;
-            // Read username that is not in the DB
-            String input, username, password, email;
-            username = null;
-            do {
-                try {
-                    input = reader.readLine();
-                    if (input == null) {
-                        break;
-                    }
-                    username = Encryptions.decryptRSA(input, RSAKeyPair.getPrivate());
-                } catch (IOException e) {
-                    System.err.println("Socket communication error");
-                } catch (Exception e) {
-                    System.err.println("RSA decryption error");
+        // Read username that is not in the DB
+        String input, username, password, email;
+        username = null;
+        do {
+            try {
+                input = reader.readLine();
+                if (input == null) {
+                    break;
                 }
-
-                usernameExist = UserDatabase.userExists(username);
-                if (usernameExist) {
-                    writer.println("Y");
-                } else {
-                    writer.println("N");
-                }
-            } while (!usernameExist);
-
-            // Send email for authentication
-            email = UserDatabase.getEmail(username);
-            sendEncrypted(email);
-
-            // Read password
-            boolean passwordMatch = false;
-            while (!passwordMatch) {
-                password = readEncrypted();
-                passwordMatch = UserDatabase.authenticateUser(username, password);
+                username = Encryptions.decryptRSA(input, RSAKeyPair.getPrivate());
+            } catch (IOException e) {
+                System.err.println("Socket communication error");
+            } catch (Exception e) {
+                System.err.println("RSA decryption error");
             }
 
-            setAuthenticated();
-            server.addLoggedClient(this);
-            user = username;
+            usernameExist = UserDatabase.userExists(username);
+            if (usernameExist) {
+                writer.println("Y");
+            } else {
+                writer.println("N");
+            }
+        } while (!usernameExist);
+
+        // Read password
+        boolean passwordMatch = false;
+        while (!passwordMatch) {
+            password = readEncrypted();
+            passwordMatch = UserDatabase.authenticateUser(username, password);
+            if (passwordMatch) {
+                writer.println("Y");
+            } else {
+                writer.println("N");
+            }
+        }
+
+        // Send email for authentication
+        email = UserDatabase.getEmail(username);
+        sendEncrypted(email);
+
+        setAuthenticated();
+        server.addLoggedClient(this);
+        user = username;
     }
 
     private void register() {
@@ -272,15 +277,17 @@ public class ClientHandler implements Runnable {
 
         // Display available waiting rooms
         if (server.getAvailableWaitingRooms() > 0) {
-            writer.println("Exist");
+            writer.println(server.getAvailableWaitingRooms());
             try {
                 reader.readLine();
             } catch (IOException e) {
                 System.err.println("Did not receive response from client");
             }
-            String message = server.displayWaitingRooms();
-            writer.println(message);
-
+            String[] availableRooms = server.displayWaitingRooms();
+            for (String message: availableRooms) {
+                System.out.println(message);
+                writer.println(message);
+            }
             // Wait for response from client
             try {
                 String input = reader.readLine();

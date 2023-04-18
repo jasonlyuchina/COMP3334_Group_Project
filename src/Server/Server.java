@@ -77,23 +77,27 @@ public class Server {
         return waitingRooms.size();
     }
 
-    public String displayWaitingRooms() {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(String.format("%d waiting room(s) available\n", waitingRooms.size()));
+    public String[] displayWaitingRooms() {
+        //StringBuilder stringBuilder = new StringBuilder();
+        //stringBuilder.append(String.format("%d waiting room(s) available\n", waitingRooms.size()));
         Set<Integer> keys = waitingRooms.keySet();
+        String[] waitingRoomInfo = new String[keys.size()];
+        int count = 0;
         for (int key: keys) {
-            stringBuilder.append(String.format("Room id: %d, user: %s\n", key, waitingRooms.get(key).getUser()));
+            waitingRoomInfo[count++] = String.format("Room id: %d; User: %s", key, waitingRooms.get(key).getUser());
+            //stringBuilder.append(String.format("Room id: %d, user: %s", key, waitingRooms.get(key).getUser()));
+            //stringBuilder.append(System.lineSeparator());
         }
-        stringBuilder.append("Input the room number you want to join (-1 to exit): ");
-        return stringBuilder.toString();
+        return waitingRoomInfo;
+        //return stringBuilder.toString();
     }
 
     public void createChatRoom(int roomNumber, ClientHandler secondClient) {
-        ChatRoom chatRoom = new ChatRoom(roomNumber, waitingRooms.get(roomNumber), secondClient);
+        ClientHandler firstClient = waitingRooms.get(roomNumber);
+        ChatRoom chatRoom = new ChatRoom(roomNumber, firstClient, secondClient);
         chatRooms.add(chatRoom);
         waitingRooms.remove(roomNumber);
-        Thread thread = new Thread(chatRoom);
-        thread.start();
+        chatRoom.start();
     }
 
     public void removeClient(ClientHandler client) {

@@ -23,7 +23,7 @@ public class Client {
     private KeyPair RSAKeyPair;
     private PublicKey serverPublicKey;
     private byte[] sharedSecret;
-    Scanner scanner;
+    static Scanner scanner;
 
 
     public Client(String host, int port) {
@@ -60,18 +60,16 @@ public class Client {
         }
 
         // After authentication
-        scanner = new Scanner(System.in);
         String input = null;
         try {
             input = reader.readLine();
-            if (input.equals("Exist")) {
-                writer.println("Received");
-                joinChatRoom();
-            } else if (input.equals("New")) {
+            if (input.equals("New")) {
                 System.out.println("No available waiting rooms");
                 createWaitingRoom();
             } else {
-                System.err.println("Receive exceptional message: "+input);
+                System.out.println(input+" waiting room(s) available");
+                writer.println("Received");
+                joinChatRoom(Integer.parseInt(input));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -84,7 +82,6 @@ public class Client {
                 if (input == null) {
                     break;
                 }
-                System.out.println("Received message from server: "+input);
                 System.out.println("Chat room created successfully");
                 System.out.println("Room id "+input);
                 chat();
@@ -95,13 +92,15 @@ public class Client {
         }
     }
 
-    private void joinChatRoom() {
+    private void joinChatRoom(int availableRooms) {
         try {
             // Receive available waiting rooms from server
-            String input = reader.readLine();
+            String input;
             // Display available waiting rooms
-            System.out.println(input);
-
+            for (int i=0; i<availableRooms; i++) {
+                input = reader.readLine();
+                System.out.println(input);
+            }
             // Prompt for user to select join chat room or create new waiting room
             System.out.println("Input the room number you want to join (-1 to exit): ");
 
@@ -250,7 +249,6 @@ public class Client {
     }
 
     private void register() {
-        Scanner scanner = new Scanner(System.in);
         String username, password, email;
         username = null;
         password = null;
@@ -302,43 +300,48 @@ public class Client {
     }
 
     private void login() {
-        Scanner scanner = new Scanner(System.in);
         String username, password, email, input;
-        username = password = email = null;
+        username = null;
+        password = null;
+        email = null;
         boolean usernameExist = false;
 
         // Read username and pass to server for verification
+        System.out.print("Please input your username: ");
         while (!usernameExist) {
-            System.out.println("Please Input your username");
             username = scanner.nextLine();
             try {
                 usernameExist = userExist(username);
             } catch (IOException e){
-                System.out.println("Your socket is stopped");
-                System.exit(0);
+                e.printStackTrace();
+            }
+            if (!usernameExist) {
+                System.out.print("Username does not exist. Please input your username: ");
+            }
+        }
+
+        // Send password for authentication
+        boolean validInput = false;
+        System.out.print("Please Input your password: ");
+        while(!validInput) {
+            password = scanner.nextLine();
+            try {
+                validInput = passwordMatch(password);
+            } catch (IOException e){
+                e.printStackTrace();
+            }
+            if (!validInput) {
+                System.out.print("Password does not match. Please input correct password: ");
             }
         }
 
         // Receive email to identify server
         email = readEncrypted();
-        System.out.println("Is this your Email?,press 1 if it is yours\n"+email);
+        System.out.print("Is this your Email? " +email + "\nPress 1 if this is yours: ");
         input=scanner.nextLine();
         if(!input.equals("1")) {
             System.out.println("Our socket was attacked, you are not connecting the right server");
             System.exit(0);
-        }
-
-        // Send password for authentication
-        boolean validInput = false;
-        while(!validInput) {
-            System.out.println("Please Input your password");
-            password = scanner.nextLine();
-            try {
-                validInput = passwordMatch(password);
-            } catch (IOException e){
-                System.out.println("Your socket is stopped");
-                System.exit(0);
-            }
         }
 
         System.out.println("Successful login!");
@@ -346,8 +349,8 @@ public class Client {
     }
 
     // Return 1 for register, 2 for login, 3 for exit
-    public static int begin() {
-        Scanner scanner = new Scanner(System.in);
+    private static int begin() {
+        scanner = new Scanner(System.in);
         System.out.println("Welcome to our P2P education Platform!");
         boolean validInput = false;
         int inputNum=0;
@@ -412,7 +415,6 @@ public class Client {
 
     private boolean passwordMatch(String password) throws IOException {
         sendEncrypted(password);
-
         String input = null;
         input = reader.readLine();
         if (input == null) {
@@ -422,11 +424,13 @@ public class Client {
     }
 
     public void chat() {
-        System.out.println("Chat room created successfully");
         Thread sendingThread = new Thread(new SendingThread(this));
         Thread receivingThread = new Thread(new ReceivingThread(this));
         sendingThread.start();
         receivingThread.start();
+        while (true) {
+            // Listen to exception
+        }
     }
 
     public static void main(String[] args) {
@@ -446,8 +450,8 @@ public class Client {
 
         @Override
         public void run() {
-            Scanner scanner = new Scanner(System.in);
             while (true) {
+                System.out.print("Send: ");
                 String message = scanner.nextLine();
                 sender.sendEncrypted(message);
             }
@@ -465,7 +469,7 @@ public class Client {
         public void run() {
             while (true) {
                 String message = receiver.readEncrypted();
-                System.out.println(message);
+                System.out.println("Receive: "+message);
             }
         }
     }

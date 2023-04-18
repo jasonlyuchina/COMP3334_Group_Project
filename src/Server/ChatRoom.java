@@ -2,7 +2,7 @@ package Server;
 
 import Encryption.Encryptions;
 
-public class ChatRoom implements Runnable {
+public class ChatRoom {
     private int session;
     private ClientHandler client1, client2;
 
@@ -13,9 +13,25 @@ public class ChatRoom implements Runnable {
         this.client2 = client2;
     }
 
-    @Override
-    public void run() {
+    public void start() {
         client1.chat(session);
         client2.chat(session);
+        Thread exchangeMessage1 = new Thread(()->{
+            while (true) {
+                String message = client1.readEncrypted();
+                client2.sendEncrypted(message);
+            }
+        });
+        Thread exchangeMessage2 = new Thread(()->{
+            while (true) {
+                String message = client2.readEncrypted();
+                client1.sendEncrypted(message);
+            }
+        });
+        exchangeMessage1.start();
+        exchangeMessage2.start();
+        while (true) {
+            // Listening to exceptions
+        }
     }
 }

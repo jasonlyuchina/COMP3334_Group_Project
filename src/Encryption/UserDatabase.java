@@ -220,11 +220,17 @@ public class UserDatabase{
         SQLiteJDBC.CreateConnection();
         createTable();
 
+
         try {
+            /*
             storeUser("username2", "password", "email@example.com");
             boolean isAuthenticated = authenticateUser("username", "wrong_pw");
             System.out.println("User authentication result: " + isAuthenticated);
             isAuthenticated = authenticateUser("username2", "password");
+            System.out.println("User authentication result: " + isAuthenticated);
+            */
+
+            boolean isAuthenticated = authenticateUser("Test1", "Test1234");
             System.out.println("User authentication result: " + isAuthenticated);
         } catch (Exception e) {
             e.printStackTrace();
