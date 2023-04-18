@@ -1,16 +1,12 @@
 package Server;
 
 
-import Encryption.Encryptions;
-import Encryption.UserDatabase;
-
 import javax.crypto.KeyAgreement;
 import java.io.*;
 import java.net.Socket;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Arrays;
 import java.util.Base64;
 
 public class ClientHandler implements Runnable {
@@ -56,7 +52,7 @@ public class ClientHandler implements Runnable {
 
     // Agree on a secret key and send public key encrypted by the secret key
     private void DHKeyExchange() {
-        KeyPairGenerator keyPairGenerator = null;
+        KeyPairGenerator keyPairGenerator;
         try {
             keyPairGenerator = KeyPairGenerator.getInstance("DiffieHellman");
         } catch (NoSuchAlgorithmException e) {
@@ -138,6 +134,11 @@ public class ClientHandler implements Runnable {
             }
 
             usernameExist = UserDatabase.userExists(username);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             if (usernameExist) {
                 writer.println("Y");
             } else {
@@ -150,6 +151,11 @@ public class ClientHandler implements Runnable {
         while (!passwordMatch) {
             password = readEncrypted();
             passwordMatch = UserDatabase.authenticateUser(username, password);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             if (passwordMatch) {
                 writer.println("Y");
             } else {
@@ -185,6 +191,11 @@ public class ClientHandler implements Runnable {
             }
 
             usernameExist = UserDatabase.userExists(username);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             if (usernameExist) {
                 writer.println("Y");
             } else {
@@ -306,7 +317,7 @@ public class ClientHandler implements Runnable {
             // Wait for response from client
             String input = reader.readLine();
             if (input.equals("Y")) {
-                int roomNumber = server.addWaitingRoom(this);
+                server.addWaitingRoom(this);
             } else if (input.equals("N")){
                 // To be determined
             } else {
@@ -315,9 +326,6 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             System.err.println("Socket communication error");
         }
-    }
-
-    public void stop() {
     }
 
     public void chat(int roomNumber) {

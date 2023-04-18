@@ -1,6 +1,4 @@
 package Server;
-import Encryption.*;
-
 
 import java.io.*;
 import java.net.*;
@@ -39,8 +37,7 @@ public class Server {
             System.err.println("Server socket creation error");
             System.exit(1);
         }
-        // Connect to database
-        /* Implement here */    // Why create connection twice
+
         SQLiteJDBC.CreateConnection();
         UserDatabase.createTable();
 
@@ -67,10 +64,9 @@ public class Server {
         loggedClients.add(loggedClient);
     }
 
-    public int addWaitingRoom(ClientHandler waitedClient) {
+    public void addWaitingRoom(ClientHandler waitedClient) {
         waitingRoomNumbers++;
         waitingRooms.put(waitingRoomNumbers, waitedClient);
-        return waitingRoomNumbers;
     }
 
     public int getAvailableWaitingRooms() {
@@ -78,18 +74,13 @@ public class Server {
     }
 
     public String[] displayWaitingRooms() {
-        //StringBuilder stringBuilder = new StringBuilder();
-        //stringBuilder.append(String.format("%d waiting room(s) available\n", waitingRooms.size()));
         Set<Integer> keys = waitingRooms.keySet();
         String[] waitingRoomInfo = new String[keys.size()];
         int count = 0;
         for (int key: keys) {
             waitingRoomInfo[count++] = String.format("Room id: %d; User: %s", key, waitingRooms.get(key).getUser());
-            //stringBuilder.append(String.format("Room id: %d, user: %s", key, waitingRooms.get(key).getUser()));
-            //stringBuilder.append(System.lineSeparator());
         }
         return waitingRoomInfo;
-        //return stringBuilder.toString();
     }
 
     public void createChatRoom(int roomNumber, ClientHandler secondClient) {
@@ -98,12 +89,6 @@ public class Server {
         chatRooms.add(chatRoom);
         waitingRooms.remove(roomNumber);
         chatRoom.start();
-    }
-
-    public void removeClient(ClientHandler client) {
-        clientHandlers.remove(client);
-        loggedClients.remove(client);
-        client.stop();
     }
 
     public static void main(String[] args) {

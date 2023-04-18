@@ -1,10 +1,8 @@
 package Server;
 
-import Encryption.Encryptions;
-
 public class ChatRoom {
-    private int session;
-    private ClientHandler client1, client2;
+    private final int session;
+    private final ClientHandler client1, client2;
 
 
     public ChatRoom(int session, ClientHandler client1, ClientHandler client2) {

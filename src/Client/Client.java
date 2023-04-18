@@ -1,20 +1,17 @@
 package Client;
 
-import Encryption.Encryptions;
-
 import javax.crypto.KeyAgreement;
 import java.io.*;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Scanner;
 import java.net.*;
 
 public class Client {
-    private String host;
-    private int port;
+    private final String host;
+    private final int port;
     private Socket clientSocket;
 
     private BufferedReader reader;
@@ -60,7 +57,7 @@ public class Client {
         }
 
         // After authentication
-        String input = null;
+        String input;
         try {
             input = reader.readLine();
             if (input.equals("New")) {
@@ -114,23 +111,6 @@ public class Client {
                     writer.println(inputNum);
                     if (inputNum == -1) {
                         createWaitingRoom();
-                        /*
-                        System.out.println("Do you want to create a new waiting room? (Y/N)");
-                        isValid = false;
-                        while (!isValid) {
-                            input = scanner.nextLine();
-                            if (input.equals("Y")) {
-                                writer.println(input);
-                                isValid = true;
-                            } else if (input.equals("N")) {
-                                writer.println(input);
-                                isValid = true;
-                                // To be determined
-                            } else {
-                                System.out.println("Wrong input! Input Again!");
-                            }
-                        }
-                        */
                     }
                 } catch (NumberFormatException e) {
                     System.out.println("Wrong input! Input Again!");
@@ -183,7 +163,7 @@ public class Client {
 
     // Agree on a secret key and send public key encrypted by the secret key
     private void DHKeyExchange() {
-        KeyPairGenerator keyPairGenerator = null;
+        KeyPairGenerator keyPairGenerator;
         try {
             keyPairGenerator = KeyPairGenerator.getInstance("DiffieHellman");
         } catch (NoSuchAlgorithmException e) {
@@ -250,20 +230,21 @@ public class Client {
 
     private void register() {
         String username, password, email;
-        username = null;
         password = null;
-        email = null;
         boolean usernameExist = true;
 
         // Read username and pass to server for verification
+        System.out.print("Please input your username: ");
         while (usernameExist) {
-            System.out.print("Please Input your username: ");
             username = scanner.nextLine();
             try {
                 usernameExist = userExist(username);
             } catch (IOException e){
                 System.out.println("Your socket is stopped");
                 System.exit(0);
+            }
+            if (usernameExist) {
+                System.out.print("Username exists. Please a new username: ");
             }
         }
 
@@ -296,14 +277,10 @@ public class Client {
         sendEncrypted(email);
 
         System.out.println("Successful register!");
-        //chat();
     }
 
     private void login() {
         String username, password, email, input;
-        username = null;
-        password = null;
-        email = null;
         boolean usernameExist = false;
 
         // Read username and pass to server for verification
@@ -345,7 +322,6 @@ public class Client {
         }
 
         System.out.println("Successful login!");
-        //chat();
     }
 
     // Return 1 for register, 2 for login, 3 for exit
@@ -376,10 +352,10 @@ public class Client {
         return inputNum;
     }
 
-    private boolean userExist(String username) throws IOException {//status =1, then it is login, otherwise, it is register
+    private boolean userExist(String username) throws IOException {
         sendEncrypted(username);
 
-        String input = null;
+        String input;
         input = reader.readLine();
         if (input == null) {
             throw new NullPointerException();
@@ -415,7 +391,7 @@ public class Client {
 
     private boolean passwordMatch(String password) throws IOException {
         sendEncrypted(password);
-        String input = null;
+        String input;
         input = reader.readLine();
         if (input == null) {
             throw new NullPointerException();
@@ -430,47 +406,61 @@ public class Client {
         receivingThread.start();
         while (true) {
             // Listen to exception
+            // Stop threads when necessary
         }
     }
 
-    public static void main(String[] args) {
-        int option = begin();
-        //int port = Integer.parseInt(args[0]);
-        int port = 1234;
-        Client client = new Client("127.0.0.1", port);
-        client.start(option);
-    }
 
-    private class SendingThread implements Runnable {
+    private static class SendingThread implements Runnable {
         private Client sender;
+        private boolean active;
 
         public SendingThread(Client sender) {
             this.sender = sender;
+            active = true;
         }
 
         @Override
         public void run() {
-            while (true) {
+            while (active) {
                 System.out.print("Send: ");
                 String message = scanner.nextLine();
                 sender.sendEncrypted(message);
             }
         }
+
+        public void stop() {
+            active = false;
+        }
+
     }
 
-    private class ReceivingThread implements Runnable {
+    private static class ReceivingThread implements Runnable {
         private Client receiver;
+        private boolean active;
 
         public ReceivingThread(Client receiver) {
             this.receiver = receiver;
+            active = true;
         }
 
         @Override
         public void run() {
-            while (true) {
+            while (active) {
                 String message = receiver.readEncrypted();
-                System.out.println("Receive: "+message);
+                System.out.print("\nReceive: "+message+"\nSend: ");
             }
         }
+
+        public void stop() {
+            active = false;
+        }
+    }
+
+    public static void main(String[] args) {
+        int option = begin();
+        int port = 1234;
+        Client client = new Client("127.0.0.1", port);
+        client.start(option);
     }
 }

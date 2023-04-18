@@ -1,4 +1,4 @@
-package Encryption;
+package Server;
 
 import javax.crypto.Cipher;
 import javax.crypto.Mac;

@@ -1,4 +1,4 @@
-package Encryption;
+package Server;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -15,9 +15,5 @@ public class SQLiteJDBC {
             System.exit(0);
         }
         System.out.println("Opened database successfully");
-    }
-
-    public static void CloseConnection() {
-
     }
 }
