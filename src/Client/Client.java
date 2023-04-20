@@ -10,6 +10,7 @@ import java.util.Scanner;
 import java.net.*;
 
 public class Client {
+
     private final String host;
     private final int port;
     private Socket clientSocket;
@@ -74,6 +75,7 @@ public class Client {
 
         // Wait for successful creation of chat room
         while (true) {
+
             try {
                 input = reader.readLine();
                 if (input == null) {
@@ -152,6 +154,7 @@ public class Client {
             System.err.println("Server connection error");
         }
     }
+
 
     private void generateKeyPair() {
         try {
@@ -240,6 +243,7 @@ public class Client {
             try {
                 usernameExist = userExist(username);
             } catch (IOException e){
+
                 System.out.println("Your socket is stopped");
                 System.exit(0);
             }
@@ -268,6 +272,7 @@ public class Client {
                 System.out.println(e.getMessage());
             }
         }
+
 
         // Encrypt password and send to server
         sendEncrypted(password);
@@ -298,11 +303,13 @@ public class Client {
         }
 
         // Send password for authentication
+
         boolean validInput = false;
         System.out.print("Please Input your password: ");
         while(!validInput) {
             password = scanner.nextLine();
             try {
+
                 validInput = passwordMatch(password);
             } catch (IOException e){
                 e.printStackTrace();
@@ -315,6 +322,7 @@ public class Client {
         // Receive email to identify server
         email = readEncrypted();
         System.out.print("Is this your Email? " +email + "\nPress 1 if this is yours: ");
+
         input=scanner.nextLine();
         if(!input.equals("1")) {
             System.out.println("Our socket was attacked, you are not connecting the right server");
@@ -331,6 +339,7 @@ public class Client {
         boolean validInput = false;
         int inputNum=0;
         while(!validInput) {
+
             System.out.println("Press 1 to Register , Press 2 to Log in, Press 0 to Exit");
             String input= scanner.nextLine();
             try {
@@ -355,6 +364,7 @@ public class Client {
     private boolean userExist(String username) throws IOException {
         sendEncrypted(username);
 
+
         String input;
         input = reader.readLine();
         if (input == null) {
@@ -362,6 +372,7 @@ public class Client {
         }
         return input.equals("Y");
     }
+
 
     private void sendEncrypted(String data) {
         String encrypted = null;
@@ -397,6 +408,7 @@ public class Client {
             throw new NullPointerException();
         }
         return input.equals("Y");
+
     }
 
     public void chat() {
