@@ -1,94 +1,98 @@
 package Server;
-import Client.Client;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
+
 public class Server {
-    /*
-    * 1. SQL (Username+Email)
-    * 2. Listening to Client
-    * 3. Record client name and port number
-    * (Optional)
-    * 4. Display available connection to users
-    */
-    private int port;
-    private List<ClientHandler> clientHandlers;
-    private Map<String, ClientHandler> connectedClients;
+    private final int port;
     private ServerSocket serverSocket;
+    // Clients connected to server with/without authentication
+    private List<ClientHandler> clientHandlers;
+    // Clients that have already done authentication
+    private List<ClientHandler> loggedClients;
+    // Available waiting rooms with session number and client waiting
+    private Map<Integer, ClientHandler> waitingRooms;
+    // Record the session number of waiting room for users to select
+    private int waitingRoomNumbers;
+    // Formed chat rooms with two clients
+    private List<ChatRoom> chatRooms;
 
     public Server(int port) {
         this.port = port;
+
         clientHandlers = new ArrayList<>();
-        connectedClients = new HashMap<>();
+        loggedClients = new ArrayList<>();
+
+        waitingRooms = new HashMap<>();
+        waitingRoomNumbers = 0;
+        chatRooms = new ArrayList<>();
     }
 
     public void start() {
         try {
             serverSocket = new ServerSocket(port);
             System.out.println("Server started on port " + port);
-
-            // Connect to database
-            /* Implement here */
-
-            while (true) {
-                // Listen for a connection from the client
-                Socket clientSocket = serverSocket.accept();
-                // Record the port number of connected client
-                ClientHandler clientHandler = new ClientHandler(clientSocket, this);
-                clientHandlers.add(clientHandler);
-                Thread thread = new Thread(clientHandler);
-                thread.start();
-            }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Server socket creation error");
+            System.exit(1);
+        }
+
+        SQLiteJDBC.CreateConnection();
+        UserDatabase.createTable();
+
+        while (true) {
+            // Listen for a connection from the client
+            Socket clientSocket = null;
+            try {
+                clientSocket = serverSocket.accept();
+            } catch (IOException e) {
+                System.err.println("Client connection error");
+            }
+            // Record the port number of connected client
+            assert clientSocket != null;
+            System.out.println("New client connected: " + clientSocket.getInetAddress().getHostAddress());
+            // Create a thread to handle client
+            ClientHandler clientHandler = new ClientHandler(clientSocket, this);
+            clientHandlers.add(clientHandler);
+            Thread thread = new Thread(clientHandler);
+            thread.start();
         }
     }
 
-    private class ClientHandler implements Runnable {
-        private Socket clientSocket;
-        private ServerSocket serverSocket;
-        private boolean isAuthenticated;
-        private String userName;
-        private DataInputStream inputStream;
-        private DataOutputStream outputStream;
+    public void addLoggedClient(ClientHandler loggedClient) {
+        loggedClients.add(loggedClient);
+    }
 
-        public ClientHandler(Socket clientSocket, ServerSocket serverSocket) {
-            this.clientSocket = clientSocket;
-            this.serverSocket = serverSocket;
-            isAuthenticated = false;
-            try {
-                inputStream = new DataInputStream(clientSocket.getInputStream());
-                outputStream = new DataOutputStream(clientSocket.getOutputStream());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    public void addWaitingRoom(ClientHandler waitedClient) {
+        waitingRoomNumbers++;
+        waitingRooms.put(waitingRoomNumbers, waitedClient);
+    }
+
+    public int getAvailableWaitingRooms() {
+        return waitingRooms.size();
+    }
+
+    public String[] displayWaitingRooms() {
+        Set<Integer> keys = waitingRooms.keySet();
+        String[] waitingRoomInfo = new String[keys.size()];
+        int count = 0;
+        for (int key: keys) {
+            waitingRoomInfo[count++] = String.format("Room id: %d; User: %s", key, waitingRooms.get(key).getUser());
         }
+        return waitingRoomInfo;
+    }
 
-        /* Procedure
-        * 1. Establish channel between server and client
-        * 2. User login/register
-        * 3. Authenticate user recursively until verified
-        * 4. Add to loggedClients
-        * 5. Maintain connection
-        * (Optional)
-        * 6. Display other online users
-        * 7. Prompt users to select other user for communication
-        * (Mandatory)
-        * 8. Establish channel between clients
-        * 9. Disable connection of server
-        */
+    public void createChatRoom(int roomNumber, ClientHandler secondClient) {
+        ClientHandler firstClient = waitingRooms.get(roomNumber);
+        ChatRoom chatRoom = new ChatRoom(roomNumber, firstClient, secondClient);
+        chatRooms.add(chatRoom);
+        waitingRooms.remove(roomNumber);
+        chatRoom.start();
+    }
 
-        public void run() {
-            /* Implement here */
-        }
-
-        public String getUserName() {
-            return userName;
-        }
-
-        public boolean isAuthenticated() {
-            return isAuthenticated;
-        }
+    public static void main(String[] args) {
+        Server server = new Server(1234);
+        server.start();
     }
 }
